@@ -25,6 +25,7 @@ using Graphs
 using GraphRecipes
 using JLD2
 
+nr_delays=2;
 
 if Sys.iswindows()
    SL="\\";
@@ -162,55 +163,6 @@ function integrate_ODE_general_BIG(MOD_nr,MOD_par,dt,L,DIM,ODEorder,X0,FNout,CH_
   end
 end
 
-function MakeDataNoNoise(PF,FromTo,CH_list,DELTA)
-  epsilon=0.15;  
-
-  II=make_MOD_nr_Coupling(FromTo,DIM,P);  
-  MOD_par_add=repeat([epsilon -epsilon],1,size(FromTo,1));
-
-  L1=WS*(WN-1)+WL+TM+2*dm-1; 
-  TRANS=20000; dt=0.05;
-
-  FN=@sprintf("%s%sCD_DDA_data_NoNoise__WL%d_WS%d_WN%d%s.ascii",
-             DATA_DIR,SL,WL,WS,WN,PF);
-
-  if !isfile(FN)
-     X0 = rand(DIM*NrSyst,1);    
-     X=integrate_ODE_general_BIG([MOD_nr II],[MOD_par MOD_par_add],
-                                 dt,                 
-                                 L1*2,              
-                                 DIM*NrSyst,ODEorder,X0,
-                                 FN,CH_list,DELTA,
-                                 TRANS);               
-     #X = X[1:2:end,1:3:end];     
-     #writedlm(FN, map(number_to_string, X),' '); 
-  end
-end                    
-
-function MakeDataNoise(PF,NOISE,SNRadd_list)
-  for SNRadd=SNRadd_list
-      if NOISE=="NoNoise"
-         NOISEadd=@sprintf("%02ddB",SNRadd);  
-         noise="NoNoise";        
-      else
-         NOISEadd=@sprintf("%02ddB_add%02d",NOISE,SNRadd);
-         noise=@sprintf("%02ddB",NOISE);
-      end
-      FNadd=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.ascii",
-                DATA_DIR,SL,NOISEadd,WL,WS,WN,PF);
-      if !isfile(FNadd)
-         FN=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.ascii",
-                      DATA_DIR,SL,noise,WL,WS,WN,PF);
-         X=readdlm(FN);
-         for k=1:size(X,2)               
-             X[:,k]=add_noise(X[:,k],SNRadd);
-         end
-         writedlm(FNadd, map(number_to_string, X),' '); 
-         X = nothing; GC.gc();
-      end
-  end
-end
-
 function make_MOD_nr_Coupling(FromTo,DIM,P)
 
    order=size(P,2);
@@ -256,15 +208,15 @@ function integrate_ODE_general_BIG(MOD_nr,MOD_par,dt,L,DIM,order,X0,FNout,CH_lis
   CMD = "$CMD -PAR $MOD_PAR";
   ANF=join(X0," ");
   CMD = "$CMD -ANF $ANF";
-  CMD = "$CMD -dt $(string(dt))";
-  CMD = "$CMD -L $(string(L))";
-  CMD = "$CMD -DIM $(string(DIM))";
-  CMD = "$CMD -order $(string(order))";
+  CMD = "$CMD -dt $dt";
+  CMD = "$CMD -L $L";
+  CMD = "$CMD -DIM $DIM";
+  CMD = "$CMD -order $order";
   if TRANS>0
      CMD = "$CMD -TRANS $(string(TRANS))";
   end
   CMD = "$CMD -FILE $FNout";
-  CMD = "$CMD -CH_list $(join(CH_list," ")) -DELTA $(string(DELTA))";
+  CMD = "$CMD -CH_list $(join(CH_list," ")) -DELTA $DELTA";
 
   if Sys.iswindows()
      run(Cmd(string.(split(CMD, " "))));
@@ -297,63 +249,6 @@ function number_to_string(n::Number)
    return @sprintf("%.15f", n);
 end
 
-function RunDDA(PF,NOISE,SNRadd_list)
-  if NOISE=="NoNoise"
-     noise="NoNoise";        
-  else
-     noise=@sprintf("%02ddB",NOISE);
-  end
-
-  for n_SNRadd=0:length(SNRadd_list)
-      if n_SNRadd==0
-         FN_DDA=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.DDA",
-                         DDA_DIR,SL,noise,WL,WS,WN,PF);   
-         FN_data=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.ascii",
-                         DATA_DIR,SL,noise,WL,WS,WN,PF);
-      else   
-         SNRadd=SNRadd_list[n_SNRadd];
-         if NOISE=="NoNoise"
-            NOISEadd=@sprintf("%02ddB",SNRadd);  
-         else
-            NOISEadd=@sprintf("%02ddB_add%02d",NOISE,SNRadd);
-         end
-         FN_DDA=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.DDA",
-                         DDA_DIR,SL,NOISEadd,WL,WS,WN,PF);
-         FN_data=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.ascii",
-                         DATA_DIR,SL,NOISEadd,WL,WS,WN,PF);
-      end
-
-      if !isfile(join([FN_DDA,"_ST"]))
-         if Sys.iswindows()
-            if !isfile("run_DDA_AsciiEdf.exe")
-               run(`cp run_DDA_AsciiEdf run_DDA_AsciiEdf.exe`);
-            end
-
-            CMD=".\\run_DDA_AsciiEdf.exe";
-         else
-            CMD="./run_DDA_AsciiEdf";
-         end
-         CMD = "$CMD -ASCII";   
-         CMD = "$CMD -MODEL $(join(MODEL," "))";  
-         CMD = "$CMD -TAU $(join(TAU," "))";     
-         CMD = "$CMD -dm $dm -order $DDAorder -nr_tau $nr_delays";  
-         CMD = "$CMD -DATA_FN $FN_data -OUT_FN $FN_DDA";   
-         CMD = "$CMD -WL $WL -WS $WS";             
-         CMD = "$CMD -SELECT 1 1 1 0";             
-         CMD = "$CMD -WL_CT 2 -WS_CT 2";            
-         CMD = "$CMD -CH_list $(join(LL1," "))";  
-         
-         if Sys.iswindows()
-            run(Cmd(string.(split(CMD, " "))));
-         else
-            run(`sh -c $CMD`);
-         end
- 
-         rm(@sprintf("%s.info",FN_DDA));     
-      end
-  end
-end
-
 function make_MODEL_new(MOD,SSYM,mm)
    MODEL=findall(x -> x == 1, MOD[mm,:]);
    L_AF=length(MODEL)+1;
@@ -380,116 +275,7 @@ function make_MODEL(SYST)
    L_AF=length(MODEL)+1;
 
    return MODEL, L_AF, order
-
 end
-
-function makeCE(PF,NOISE,SNRadd_list)
-  c=fill(NaN,NrSyst,NrSyst,1+length(SNRadd_list));
-  e=fill(NaN,NrSyst,NrSyst,1+length(SNRadd_list));
-
-  if NOISE=="NoNoise"
-     noise="NoNoise";        
-  else
-     noise=@sprintf("%02ddB",NOISE);
-  end
-
-  for n_SNRadd=0:length(SNRadd_list)
-      if n_SNRadd==0
-         FN_DDA=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.DDA",
-                         DDA_DIR,SL,noise,WL,WS,WN,PF);   
-      else   
-         SNRadd=SNRadd_list[n_SNRadd];
-         if NOISE=="NoNoise"
-            NOISEadd=@sprintf("%02ddB",SNRadd);  
-         else
-            NOISEadd=@sprintf("%02ddB_add%02d",NOISE,SNRadd);
-         end
-         FN_DDA=@sprintf("%s%sCD_DDA_data_%s__WL%d_WS%d_WN%d%s.DDA",
-                         DDA_DIR,SL,NOISEadd,WL,WS,WN,PF);
-      end
-
-      ST=readdlm(join([FN_DDA,"_ST"]));            
-      T=ST[:,1:2]; ST=ST[:,3:end];                
-                                                 
-      global WN=Int(size(T,1));                        
-      ST=ST[:,L_AF:L_AF:end];                  
-      ST=reshape(ST,WN,7);                    
-      
-      CT=readdlm(join([FN_DDA,"_CT"]));       
-      CT=CT[:,3:end];                      
-                                             
-      CT=CT[:,L_AF:L_AF:end];               
-      CT=reshape(CT,WN,size(LIST,1));     
-      
-      E=fill(NaN,WN,NrSyst,NrSyst);   
-      for l=1:size(LIST,1)
-          ch1=LIST[l,1];ch2=LIST[l,2];
-          E[:,ch1,ch2] = abs.( dropdims(mean(ST[:,[ch1,ch2]],dims=2),dims=2) ./ CT[:,l] .- 1 );
-          E[:,ch2,ch1] = E[:,ch1,ch2];
-      end    
-      E=dropdims(mean(E,dims=1),dims=1);           
-
-      CD=readdlm(join([FN_DDA,"_CD_DDA_ST"]));
-      CD=CD[:,3:end];                        
-                                      
-      CD=reshape(CD,WN,2,size(LIST,1));    
-
-      C=fill(NaN,WN,NrSyst,NrSyst);  
-      for l=1:size(LIST,1)
-          ch1=LIST[l,1];ch2=LIST[l,2];
-          C[:,ch1,ch2] = CD[:,2,l];
-          C[:,ch2,ch1] = CD[:,1,l];
-      end    
-      C[isnan.(C)].=0;
-      C=dropdims(mean(C,dims=1),dims=1);  
-
-      e[:,:,n_SNRadd+1]=E;
-      c[:,:,n_SNRadd+1]=C;
-  end
-
-  return c,e
-end
-
-function deriv_all(data, dm, order=nothing, dt=nothing)
-   if order===nothing 
-      order=2 
-   end
-   if dt===nothing 
-      dt=1
-   end
-
-   t=collect(1+dm:length(data)-dm)
-   L=length(t)
-
-   #### second order:
-   
-   if order==2
-      ddata = zeros(L)
-      for n1=1:dm
-          ddata += (data[t.+n1].-data[t.-n1])/n1
-      end
-      ddata /= (dm/dt);  
-   end
-   
-   #### third order:
-   
-   if order==3
-      ddata = zeros(L)
-      d=0;
-      for n1=1:dm
-          for n2=n1+1:dm
-              d+=1
-              ddata -= (((data[t.-n2].-data[t.+n2])*n1^3- 
-                      (data[t.-n1].-data[t.+n1])*n2^3)/(n1^3*n2-n1*n2^3))
-          end
-      end
-      ddata /= (d/dt);  
-   end
-   
-   return ddata
-end
-
-
 
 function deriv_all(data, dm, order=nothing, dt=nothing)
    if order===nothing
@@ -528,5 +314,138 @@ function deriv_all(data, dm, order=nothing, dt=nothing)
    end
 
    return ddata
+end
+
+function make_MOD_new_new(N_MOD,nr_delays,order)
+
+    # MOD,P_ODE,SSYM=make_MOD_new_new(N_MOD,nr_delays,order);
+
+    # Claudia 06/16/2015 Matlab
+    # Claudia 08/17/2023 Julia
+    # Claudia 01/27/2024
+
+    #nr_delays=2; order=3; N_MOD=2:3;
+    #nr_delays=2; order=2; N_MOD=3;
+
+    if nr_delays!=2
+       println("only nr_delays=2 supported");
+       global nr_delays
+       nr_delays=2;
+    end
+
+    P_DDA=monomial_list(nr_delays,order); L=size(P_DDA,1);
+
+    PP = -P_DDA;
+    PP[PP.==-1].=2;
+    PP[PP.==-2].=1;
+    PP=sort(PP,dims=2);
+
+    as_ints(a::AbstractArray{CartesianIndex{L}}) where L = reshape(reinterpret(Int, a), (L, size(a)...));
+
+    f=fill(0,size(P_DDA,1),2);
+    for k1=1:size(P_DDA,1)
+        f[k1,1]=k1;
+        ff = findall(x -> x ==0, sum(abs.(P_DDA-repeat(PP[k1,:],1,size(PP,1))'),dims=2));
+        if length(ff)>0
+           f[k1,2]=as_ints(ff)[1];
+        end
+    end
+
+    MOD=fill(0,1,size(P_DDA,1))
+    for n_N = 1:length(N_MOD)
+        N = N_MOD[n_N];
+        C = collect(combinations(1:L, N));
+        C = reshape(collect(Iterators.flatten(C)),(size(C[1],1),size(C,1)))';
+        M = zeros(Int, size(C, 1), L);
+
+        for c = 1:size(C, 1)
+            M[c, C[c, :]] .= 1
+        end
+
+        M1=sort(M.*reshape(repeat(1:L,size(M,1)),(size(M,2),size(M,1)))',dims=2)[:,end-N+1:end];
+        M2=-M1;
+
+        for k1=1:size(f,1)
+            M2[M2.==-f[k1,1]].=f[k1,2];
+        end
+        M2=sort(M2,dims=2);
+
+        f2=fill(0,size(M1,1),2);
+        for k1=1:size(M1,1)
+            f2[k1,1]=k1;
+            ff = findall(x -> x ==0, sum(abs.(M1-repeat(M2[k1,:],1,size(M2,1))'),dims=2));
+            if length(ff)>0
+               f2[k1,2]=as_ints(ff)[1];
+            end
+        end
+        f2=sort(f2,dims=2);
+        f2=unique(f2,dims=1);
+        f2=f2[f2[:,1].!=f2[:,2],2];
+        f2=setdiff(1:size(M1,1),f2);
+        #M1=M1[f2,:];
+
+        MOD=[MOD;M[f2,:]];
+    end
+    MOD=MOD[2:end,:];
+
+    SSYM = fill(-1, size(MOD, 1), 2);
+    for n_M=1:size(MOD,1)
+        p=P_DDA[findall(x->x==1,MOD[n_M,:]),:];
+
+        SSYM[n_M,1]=length(unique([value for value in p if value > 0]));
+
+        p=convert(Matrix{Float64},p); p[p .== 0] .= NaN;
+        p1=mod.(p.+2,2).+1;
+        p1[isnan.(p1)].=0;p1=Int.(p1);
+        p[isnan.(p)].=0;p=Int.(p);
+
+        p1=sort!(p1,dims=2);
+        p1=sortslices(p1,dims=1);
+
+        if sum(abs.(p-p1))==0
+           SSYM[n_M,2]=1;
+        else
+           SSYM[n_M,2]=0;
+        end
+    end
+
+    return MOD,P_DDA,SSYM
+end
+
+function make_TAU_ALL(SSYM,DELAYS)
+
+   uSYM=unique(SSYM,dims=1);
+   for k=1:size(uSYM,1)
+      s=uSYM[k,:]'; nr=s[1]; sym=s[2];
+    
+      FN=@sprintf("TAU_ALL__%d_%d",s[1],s[2]);
+      #if !isfile(FN)
+        fid=open(FN,"w");        
+        if nr==1
+           for tau1 = 1:length(DELAYS)
+               @printf(fid,"%d\n",DELAYS[tau1]);
+           end
+        elseif nr==2
+           if sym==0
+              for tau1 = 1:length(DELAYS)
+                  for tau2 = 1:length(DELAYS)
+                      if tau1!=tau2
+                         @printf(fid,"%d %d\n",DELAYS[tau1],DELAYS[tau2]);
+                      end
+                  end
+              end
+           elseif sym==1
+              for tau1 = 1:length(DELAYS)
+                  for tau2 = 1:length(DELAYS)
+                      if tau1<tau2
+                         @printf(fid,"%d %d\n",DELAYS[tau1],DELAYS[tau2]);
+                      end
+                  end
+              end
+           end
+        end
+        close(fid);
+      #end
+   end
 end
 
