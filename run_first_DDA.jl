@@ -58,11 +58,10 @@ for wn=0:WN-1
     
     STD=std(data); 
     DATA = (data .- mean(data)) ./ STD; dDATA = ddata / STD;
-    
+    dDATA=dDATA[TM+1:end];
     M=hcat(DATA[(TM+1:end) .- TAU[1]] , 
            DATA[(TM+1:end) .- TAU[2]] ,
            DATA[(TM+1:end) .- TAU[1]].^3 );
-    dDATA=dDATA[TM+1:end];
            
     ST[wn+1,1:3] = (M \ dDATA); 
     ST[wn+1,4]   = sqrt(mean((dDATA .- M*ST[wn+1,1:3]).^2));
@@ -71,6 +70,7 @@ end
 
 ###  for all time series
 
+Y=readdlm(FN_DATA);
 
 ST = fill(NaN,WN,4,size(Y,2));
 for n_Y=1:size(Y,2)
@@ -109,18 +109,20 @@ for n_LIST=1:size(LIST,1)
         anf=wn*WS; ende=anf+WL+TM+2*dm-1;
         
         data1=Y[anf+1:ende+1,ch1]; ddata1=deriv_all(data1,dm); data1=data1[dm+1:end-dm];
-        data2=Y[anf+1:ende+1,ch2]; ddata2=deriv_all(data2,dm); data2=data2[dm+1:end-dm];
-        
         STD=std(data1); DATA1 = (data1 .- mean(data1)) ./ STD; dDATA1 = ddata1 / STD;
-        STD=std(data2); DATA2 = (data2 .- mean(data2)) ./ STD; dDATA2 = ddata2 / STD;
-        
+        dDATA1=dDATA1[TM+1:end];
         M1=hcat(DATA1[(TM+1:end) .- TAU[1]] , 
                 DATA1[(TM+1:end) .- TAU[2]] ,
                 DATA1[(TM+1:end) .- TAU[1]].^3 );
+
+        data2=Y[anf+1:ende+1,ch2]; ddata2=deriv_all(data2,dm); data2=data2[dm+1:end-dm]; 
+        STD=std(data2); DATA2 = (data2 .- mean(data2)) ./ STD; dDATA2 = ddata2 / STD;
+        dDATA2=dDATA2[TM+1:end];
         M2=hcat(DATA2[(TM+1:end) .- TAU[1]] , 
                 DATA2[(TM+1:end) .- TAU[2]] ,
                 DATA2[(TM+1:end) .- TAU[1]].^3 );
-        M=vcat(M1,M2); dDATA=vcat(dDATA1[TM+1:end],dDATA2[TM+1:end]);             
+
+        M=vcat(M1,M2); dDATA=vcat(dDATA1,dDATA2);             
 
         CT[wn+1,1:3,n_LIST] = (M \ dDATA); 
         CT[wn+1,4,n_LIST]   = sqrt(mean((dDATA .- M*CT[wn+1,1:3,n_LIST]).^2));
