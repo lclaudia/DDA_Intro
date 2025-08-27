@@ -14,52 +14,9 @@ import seaborn as sns
 # Import local functions
 from dda_functions import (
     create_mod_nr as make_MOD_nr,
-    integrate_ode_general as integrate_ODE_general_BIG,
     create_model as make_MODEL,
+    deriv_all,
 )
-
-
-def deriv_all(data, dm, order=2, dt=1.0):
-    """
-    Exact translation of Julia's deriv_all function.
-
-    This matches the Julia implementation exactly:
-    - Same indexing scheme
-    - Same finite difference formula
-    - Same normalization
-    """
-    # Julia: t=collect(1+dm:length(data)-dm)
-    # In 1-based: indices from dm+1 to length-dm
-    # In 0-based: indices from dm to length-dm-1
-    t = np.arange(dm, len(data) - dm)
-    L = len(t)
-
-    if order == 2:
-        ddata = np.zeros(L)
-
-        # Julia: for n1=1:dm
-        for n1 in range(1, dm + 1):
-            # Julia: ddata += (data[t.+n1].-data[t.-n1])/n1
-            ddata += (data[t + n1] - data[t - n1]) / n1
-
-        # Julia: ddata /= (dm/dt);
-        ddata /= dm / dt
-
-    elif order == 3:
-        ddata = np.zeros(L)
-        d = 0
-
-        for n1 in range(1, dm + 1):
-            for n2 in range(n1 + 1, dm + 1):
-                d += 1
-                ddata -= (
-                    (data[t - n2] - data[t + n2]) * n1**3
-                    - (data[t - n1] - data[t + n1]) * n2**3
-                ) / (n1**3 * n2 - n1 * n2**3)
-
-        ddata /= d / dt
-
-    return ddata
 
 
 # System parameters
@@ -320,14 +277,6 @@ CMD += f" -WL {WL} -WS {WS}"
 CMD += " -SELECT 1 1 0 0"
 CMD += f" -CH_list {' '.join(map(str, LIST.flatten() + 1))}"
 CMD += " -WL_CT 2 -WS_CT 2"
-
-# Skip external binary call - use Julia-generated DDA files for comparison
-# print(f"Skipping external DDA call - using existing Julia-generated files")
-# print(f"CMD would have been: {CMD}")
-# if platform.system() == "Windows":
-#     subprocess.run(CMD.split())
-# else:
-#     subprocess.run(["sh", "-c", CMD])
 
 # Load results from external DDA computation
 ST2 = np.loadtxt("ROS_4.DDA_ST")

@@ -21,6 +21,49 @@ from numpy.typing import NDArray
 SL = "\\" if platform.system() == "Windows" else "/"
 
 
+def deriv_all(data, dm, order=2, dt=1.0):
+    """
+    Exact translation of Julia's deriv_all function.
+
+    This matches the Julia implementation exactly:
+    - Same indexing scheme
+    - Same finite difference formula
+    - Same normalization
+    """
+    # Julia: t=collect(1+dm:length(data)-dm)
+    # In 1-based: indices from dm+1 to length-dm
+    # In 0-based: indices from dm to length-dm-1
+    t = np.arange(dm, len(data) - dm)
+    L = len(t)
+
+    if order == 2:
+        ddata = np.zeros(L)
+
+        # Julia: for n1=1:dm
+        for n1 in range(1, dm + 1):
+            # Julia: ddata += (data[t.+n1].-data[t.-n1])/n1
+            ddata += (data[t + n1] - data[t - n1]) / n1
+
+        # Julia: ddata /= (dm/dt);
+        ddata /= dm / dt
+
+    elif order == 3:
+        ddata = np.zeros(L)
+        d = 0
+
+        for n1 in range(1, dm + 1):
+            for n2 in range(n1 + 1, dm + 1):
+                d += 1
+                ddata -= (
+                    (data[t - n2] - data[t + n2]) * n1**3
+                    - (data[t - n1] - data[t + n1]) * n2**3
+                ) / (n1**3 * n2 - n1 * n2**3)
+
+        ddata /= d / dt
+
+    return ddata
+
+
 def ensure_directory_exists(directory: str) -> None:
     """Create directory if it doesn't exist.
 
@@ -207,22 +250,22 @@ monomial_list = generate_monomial_list
 def create_model(system: NDArray) -> Tuple[NDArray, int, int]:
     """
     Simplified MODEL creation for DDA - focus on getting the right behavior.
-    
+
     For the specific case: DDAmodel = [[0 0 1]; [0 0 2]; [1 1 1]]
     The Julia make_MODEL produces specific indices that we need to match.
     """
     order = system.shape[1]
-    
+
     # For the specific DDA case, use the expected pattern
     # This matches what Julia's make_MODEL would produce for our specific input
     if np.array_equal(system, np.array([[0, 0, 1], [0, 0, 2], [1, 1, 1]])):
-        MODEL = np.array([1, 2, 3], dtype=int)  # Julia's expected output 
+        MODEL = np.array([1, 2, 3], dtype=int)  # Julia's expected output
     else:
         # General fallback
         MODEL = np.arange(1, system.shape[0] + 1, dtype=int)
-    
+
     L_AF = len(MODEL) + 1
-    
+
     return MODEL, L_AF, order
 
 
