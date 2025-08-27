@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import platform
-import subprocess
 from itertools import combinations
 import seaborn as sns
 
@@ -23,7 +22,7 @@ from dda_functions import (
 def deriv_all(data, dm, order=2, dt=1.0):
     """
     Exact translation of Julia's deriv_all function.
-    
+
     This matches the Julia implementation exactly:
     - Same indexing scheme
     - Same finite difference formula
@@ -34,31 +33,32 @@ def deriv_all(data, dm, order=2, dt=1.0):
     # In 0-based: indices from dm to length-dm-1
     t = np.arange(dm, len(data) - dm)
     L = len(t)
-    
+
     if order == 2:
         ddata = np.zeros(L)
-        
+
         # Julia: for n1=1:dm
         for n1 in range(1, dm + 1):
             # Julia: ddata += (data[t.+n1].-data[t.-n1])/n1
             ddata += (data[t + n1] - data[t - n1]) / n1
-        
+
         # Julia: ddata /= (dm/dt);
-        ddata /= (dm / dt)
-        
+        ddata /= dm / dt
+
     elif order == 3:
         ddata = np.zeros(L)
         d = 0
-        
+
         for n1 in range(1, dm + 1):
             for n2 in range(n1 + 1, dm + 1):
                 d += 1
-                ddata -= (((data[t - n2] - data[t + n2]) * n1**3 - 
-                          (data[t - n1] - data[t + n1]) * n2**3) / 
-                         (n1**3 * n2 - n1 * n2**3))
-        
-        ddata /= (d / dt)
-    
+                ddata -= (
+                    (data[t - n2] - data[t + n2]) * n1**3
+                    - (data[t - n1] - data[t + n1]) * n2**3
+                ) / (n1**3 * n2 - n1 * n2**3)
+
+        ddata /= d / dt
+
     return ddata
 
 
@@ -96,7 +96,7 @@ MOD_par = MOD_par.T.flatten()
 TRANS = 20000
 dt = 0.05
 # Set random seed for reproducible results matching Julia
-np.random.seed(42)  
+np.random.seed(42)
 X0 = np.random.rand(DIM * NrSyst)
 CH_list = list(range(1, DIM * NrSyst + 1, DIM))
 DELTA = 2
@@ -106,7 +106,9 @@ L = 20000
 # Use existing Julia-generated data for exact comparison
 # If you want to generate new data, delete ROS_4.ascii file first
 if not os.path.isfile(FN_DATA):
-    print("Error: ROS_4.ascii file not found. Please run Julia version first to generate data.")
+    print(
+        "Error: ROS_4.ascii file not found. Please run Julia version first to generate data."
+    )
     exit(1)
 
 # Load data
@@ -147,18 +149,22 @@ for wn in range(WN):
     # Julia: M = hcat(DATA[(TM+1:end).-TAU[1]], DATA[(TM+1:end).-TAU[2]], DATA[(TM+1:end).-TAU[1]] .^ 3)
     # Julia indexing: (TM+1:end).-TAU[1] = TM+1-TAU[1]:end-TAU[1]
     # Python 0-based: TM-TAU[0]:len(DATA)-TAU[0]
-    M = np.column_stack([
-        DATA[TM - TAU[0]:len(DATA) - TAU[0]],    # First delay coordinate
-        DATA[TM - TAU[1]:len(DATA) - TAU[1]],    # Second delay coordinate  
-        (DATA[TM - TAU[0]:len(DATA) - TAU[0]]) ** 3  # Nonlinear term
-    ])
-    
+    M = np.column_stack(
+        [
+            DATA[TM - TAU[0] : len(DATA) - TAU[0]],  # First delay coordinate
+            DATA[TM - TAU[1] : len(DATA) - TAU[1]],  # Second delay coordinate
+            (DATA[TM - TAU[0] : len(DATA) - TAU[0]]) ** 3,  # Nonlinear term
+        ]
+    )
+
     # Julia: dDATA = dDATA[TM+1:end] (AFTER M construction)
     dDATA_sliced = dDATA[TM:]
 
     # Use solve instead of lstsq to match Julia's \ operator more closely
     try:
-        ST[wn, :3] = np.linalg.solve(M.T @ M, M.T @ dDATA_sliced)  # Normal equation approach
+        ST[wn, :3] = np.linalg.solve(
+            M.T @ M, M.T @ dDATA_sliced
+        )  # Normal equation approach
     except np.linalg.LinAlgError:
         ST[wn, :3] = np.linalg.lstsq(M, dDATA_sliced, rcond=None)[0]
     ST[wn, 3] = np.sqrt(np.mean((dDATA_sliced - M @ ST[wn, :3]) ** 2))
@@ -183,12 +189,14 @@ for n_Y in range(Y.shape[1]):
         dDATA = ddata / STD
 
         # Fixed matrix construction (same as single time series)
-        M = np.column_stack([
-            DATA[TM - TAU[0]:len(DATA) - TAU[0]],
-            DATA[TM - TAU[1]:len(DATA) - TAU[1]],
-            (DATA[TM - TAU[0]:len(DATA) - TAU[0]]) ** 3
-        ])
-        
+        M = np.column_stack(
+            [
+                DATA[TM - TAU[0] : len(DATA) - TAU[0]],
+                DATA[TM - TAU[1] : len(DATA) - TAU[1]],
+                (DATA[TM - TAU[0] : len(DATA) - TAU[0]]) ** 3,
+            ]
+        )
+
         # Julia: dDATA = dDATA[TM+1:end] (AFTER M construction)
         dDATA_sliced = dDATA[TM:]
 
@@ -231,17 +239,21 @@ for n_LIST in range(len(LIST)):
         dDATA2 = ddata2 / STD
 
         # Build matrices with fixed indexing
-        M1 = np.column_stack([
-            DATA1[TM - TAU[0]:len(DATA1) - TAU[0]],
-            DATA1[TM - TAU[1]:len(DATA1) - TAU[1]],
-            (DATA1[TM - TAU[0]:len(DATA1) - TAU[0]]) ** 3
-        ])
-        
-        M2 = np.column_stack([
-            DATA2[TM - TAU[0]:len(DATA2) - TAU[0]],
-            DATA2[TM - TAU[1]:len(DATA2) - TAU[1]],
-            (DATA2[TM - TAU[0]:len(DATA2) - TAU[0]]) ** 3
-        ])
+        M1 = np.column_stack(
+            [
+                DATA1[TM - TAU[0] : len(DATA1) - TAU[0]],
+                DATA1[TM - TAU[1] : len(DATA1) - TAU[1]],
+                (DATA1[TM - TAU[0] : len(DATA1) - TAU[0]]) ** 3,
+            ]
+        )
+
+        M2 = np.column_stack(
+            [
+                DATA2[TM - TAU[0] : len(DATA2) - TAU[0]],
+                DATA2[TM - TAU[1] : len(DATA2) - TAU[1]],
+                (DATA2[TM - TAU[0] : len(DATA2) - TAU[0]]) ** 3,
+            ]
+        )
 
         # Slice derivatives AFTER matrix construction
         dDATA1_sliced = dDATA1[TM:]
@@ -256,7 +268,9 @@ for n_LIST in range(len(LIST)):
             CT[wn, :3, n_LIST] = np.linalg.solve(M.T @ M, M.T @ dDATA_combined)
         except np.linalg.LinAlgError:
             CT[wn, :3, n_LIST] = np.linalg.lstsq(M, dDATA_combined, rcond=None)[0]
-        CT[wn, 3, n_LIST] = np.sqrt(np.mean((dDATA_combined - M @ CT[wn, :3, n_LIST]) ** 2))
+        CT[wn, 3, n_LIST] = np.sqrt(
+            np.mean((dDATA_combined - M @ CT[wn, :3, n_LIST]) ** 2)
+        )
 
 
 ########  DynamicalErgodicity DDA  ########
@@ -325,12 +339,12 @@ CT2 = CT2[:, 2:]  # Skip first 2 columns
 # Compare results and compute errors
 # Julia uses column-major reshaping, Python uses row-major by default
 # Need to match Julia's reshape behavior exactly
-ST_reshaped = ST.reshape(WN, ST.shape[1] * ST.shape[2], order='F')
-CT_reshaped = CT.reshape(WN, CT.shape[1] * CT.shape[2], order='F')
+ST_reshaped = ST.reshape(WN, ST.shape[1] * ST.shape[2], order="F")
+CT_reshaped = CT.reshape(WN, CT.shape[1] * CT.shape[2], order="F")
 
 error_ST = np.mean(ST_reshaped - ST2)
 error_CT = np.mean(CT_reshaped - CT2)
 
-# Print with same precision as Julia for comparison  
+# Print with same precision as Julia for comparison
 print(error_ST)
 print(error_CT)
