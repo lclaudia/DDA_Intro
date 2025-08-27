@@ -2,7 +2,7 @@
 Single Timeseries DDA Analysis Module
 
 This module provides functions for performing DDA (Delay Differential Analysis)
-on single timeseries data. It computes the structure (ST) coefficients.
+on single timeseries data.
 """
 
 import numpy as np
@@ -96,7 +96,7 @@ def compute_st_multiple(
         WS: Window shift (default: 1000)
 
     Returns:
-        Array of shape (WN, 4, n_channels) containing ST coefficients
+        Array of shape (WN, 4, n_channels) containing ST features
     """
     if len(Y.shape) == 1:
         Y = Y.reshape(-1, 1)
