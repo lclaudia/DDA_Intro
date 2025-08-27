@@ -3,3 +3,4 @@ __pycache__/
 *.DDA_ST
 *.DDA.info
 *.png
+*.ascii
