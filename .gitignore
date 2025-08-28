@@ -1,6 +1,31 @@
+# Python
 __pycache__/
+
+# DDA output files
 *.DDA_CT
 *.DDA_ST
 *.DDA.info
 *.png
 *.ascii
+
+# Rust build artifacts and temporary files
+rs/target/
+rs/Cargo.lock
+rs/*.log
+rs/*.txt
+rs/*_ST
+rs/*_CT
+rs/*_DE
+rs/TEST*
+rs/RUST_TEST*
+rs/INTEGRATION_TEST*
+rs/PRECISION_TEST*
+rs/rust_*
+rs/python_*
+rs/trace_*
+rs/solver_*
+rs/precision_test*
+rs/test_*.ascii
+rs/test_*.txt
+rs/run_DDA_AsciiEdf
+rs/*.png
