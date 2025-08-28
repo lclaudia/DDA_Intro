@@ -1,0 +1,6 @@
+__pycache__/
+*.DDA_CT
+*.DDA_ST
+*.DDA.info
+*.png
+*.ascii
