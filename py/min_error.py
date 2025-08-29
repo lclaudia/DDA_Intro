@@ -14,7 +14,7 @@ from itertools import combinations
 import numpy as np
 from numpy.typing import NDArray
 
-from dda_functions import monomial_list, make_MODEL, SL
+from dda_functions import monomial_list, make_MODEL
 
 # Global variable for number of delays
 nr_delays = 2
@@ -294,18 +294,20 @@ def MinError(
             TAU = np.loadtxt(TAU_name, ndmin=2)
             N_TAU = len(TAU)
             
-            FN_DDA = f"{DDA_DIR}{SL}{model}"
+            FN_DDA = os.path.join(DDA_DIR, model)
             
             if not os.path.isfile(f"{FN_DDA}_ST") or yn == "yes":
                 print(mm)
                 
                 # Prepare executable
                 if platform.system() == "Windows":
-                    if not Path("run_DDA_AsciiEdf.exe").exists():
-                        subprocess.run(["cp", "run_DDA_AsciiEdf", "run_DDA_AsciiEdf.exe"])
-                    CMD = ".\\run_DDA_AsciiEdf.exe"
+                    executable = Path("run_DDA_AsciiEdf.exe")
+                    if not executable.exists():
+                        import shutil
+                        shutil.copy("run_DDA_AsciiEdf", str(executable))
+                    CMD = str(executable)
                 else:
-                    CMD = "./run_DDA_AsciiEdf"
+                    CMD = str(Path("run_DDA_AsciiEdf"))
                 
                 # Build command
                 if AsciiEdf == "ASCII":

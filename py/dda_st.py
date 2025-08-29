@@ -6,10 +6,12 @@ on single timeseries data.
 """
 
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any, Union
 from numpy.typing import NDArray
+from pathlib import Path
 
 from dda_functions import deriv_all
+from dda_output_converter import convert_dda_output
 
 
 def compute_st_single(
@@ -19,7 +21,10 @@ def compute_st_single(
     order: int = 3,
     WL: int = 2000,
     WS: int = 1000,
-) -> NDArray:
+    return_dict: bool = True,
+    sampling_rate: Optional[float] = None,
+    units: Optional[str] = None,
+) -> Union[NDArray, Dict[str, Any]]:
     """
     Compute single timeseries DDA structure coefficients.
 
@@ -30,10 +35,13 @@ def compute_st_single(
         order: Order of DDA (default: 3)
         WL: Window length (default: 2000)
         WS: Window shift (default: 1000)
+        return_dict: Return standardized dictionary format (default: True)
+        sampling_rate: Sampling rate in Hz (optional)
+        units: Physical units of the data (optional)
 
     Returns:
-        Array of shape (WN, 4) containing ST coefficients for each window
-        where WN is the number of windows
+        If return_dict=True: Dictionary with coefficients, errors, and metadata
+        If return_dict=False: Array of shape (WN, 4) containing ST coefficients
     """
     TM = max(TAU)
     WN = int(1 + np.floor((len(data) - (WL + TM + 2 * dm - 1)) / WS))
@@ -73,7 +81,20 @@ def compute_st_single(
         # Compute residual error
         ST[wn, 3] = np.sqrt(np.mean((dDATA_sliced - M @ ST[wn, :3]) ** 2))
 
-    return ST
+    if return_dict:
+        return convert_dda_output(
+            coefficients_matrix=ST,
+            algorithm='DDA_ST',
+            delays=TAU,
+            window_length=WL,
+            window_shift=WS,
+            derivative_method=dm,
+            order=order,
+            sampling_rate=sampling_rate,
+            units=units,
+        )
+    else:
+        return ST
 
 
 def compute_st_multiple(
@@ -83,7 +104,11 @@ def compute_st_multiple(
     order: int = 3,
     WL: int = 2000,
     WS: int = 1000,
-) -> NDArray:
+    return_dict: bool = True,
+    sampling_rate: Optional[float] = None,
+    units: Optional[str] = None,
+    channel_names: Optional[list] = None,
+) -> Union[NDArray, Dict[str, Any]]:
     """
     Compute single timeseries DDA for multiple timeseries.
 
@@ -94,9 +119,14 @@ def compute_st_multiple(
         order: Order of DDA (default: 3)
         WL: Window length (default: 2000)
         WS: Window shift (default: 1000)
+        return_dict: Return standardized dictionary format (default: True)
+        sampling_rate: Sampling rate in Hz (optional)
+        units: Physical units of the data (optional)
+        channel_names: Names of channels (optional)
 
     Returns:
-        Array of shape (WN, 4, n_channels) containing ST features
+        If return_dict=True: Dictionary with coefficients, errors, and metadata
+        If return_dict=False: Array of shape (WN, 4, n_channels) containing ST features
     """
     if len(Y.shape) == 1:
         Y = Y.reshape(-1, 1)
@@ -141,7 +171,21 @@ def compute_st_multiple(
             # Compute residual error
             ST[wn, 3, n_Y] = np.sqrt(np.mean((dDATA_sliced - M @ ST[wn, :3, n_Y]) ** 2))
 
-    return ST
+    if return_dict:
+        return convert_dda_output(
+            coefficients_matrix=ST,
+            algorithm='DDA_ST',
+            delays=TAU,
+            window_length=WL,
+            window_shift=WS,
+            derivative_method=dm,
+            order=order,
+            sampling_rate=sampling_rate,
+            units=units,
+            channel_names=channel_names,
+        )
+    else:
+        return ST
 
 
 def run_dda_st_external(
@@ -177,7 +221,6 @@ def run_dda_st_external(
         Tuple of (command string, loaded ST results)
     """
     import platform
-    import os
     import subprocess
 
     if platform_system is None:
@@ -185,13 +228,14 @@ def run_dda_st_external(
 
     # Platform-specific executable handling
     if platform_system == "Windows":
-        if not os.path.isfile("run_DDA_AsciiEdf.exe"):
+        executable = Path("run_DDA_AsciiEdf.exe")
+        if not executable.exists():
             import shutil
 
-            shutil.copy("run_DDA_AsciiEdf", "run_DDA_AsciiEdf.exe")
-        CMD = ".\\run_DDA_AsciiEdf.exe"
+            shutil.copy("run_DDA_AsciiEdf", str(executable))
+        CMD = str(executable)
     else:
-        CMD = "./run_DDA_AsciiEdf"
+        CMD = str(Path("run_DDA_AsciiEdf"))
 
     # Build command
     CMD += " -ASCII"

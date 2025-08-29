@@ -333,13 +333,14 @@ def run_external_integration(
     """
     # Platform-specific executable
     if platform.system() == "Windows":
-        if not Path("i_ODE_general_BIG.exe").exists():
+        executable = Path("i_ODE_general_BIG.exe")
+        if not executable.exists():
             import shutil
 
-            shutil.copy("i_ODE_general_BIG", "i_ODE_general_BIG.exe")
-        CMD = ".\\i_ODE_general_BIG.exe"
+            shutil.copy("i_ODE_general_BIG", str(executable))
+        CMD = str(executable)
     else:
-        CMD = "./i_ODE_general_BIG"
+        CMD = str(Path("i_ODE_general_BIG"))
 
     # Build command matching Julia exactly
     MOD_NR = " ".join(map(str, MOD_nr))

@@ -17,10 +17,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-# Platform-specific path separator
-SL = "\\" if platform.system() == "Windows" else "/"
-
-
 def deriv_all(data, dm, order=2, dt=1.0):
     """
     Exact translation of Julia's deriv_all function.
@@ -114,18 +110,18 @@ def integrate_ode_general(
 
     # Determine executable name based on platform
     if platform.system() == "Windows":
-        executable = ".\\i_ODE_general_BIG.exe"
+        executable = Path("i_ODE_general_BIG.exe")
         # Copy executable if needed
-        if not Path("i_ODE_general_BIG.exe").exists():
+        if not executable.exists():
             import shutil
 
-            shutil.copy("i_ODE_general_BIG", "i_ODE_general_BIG.exe")
+            shutil.copy("i_ODE_general_BIG", str(executable))
     else:
-        executable = "./i_ODE_general_BIG"
+        executable = Path("i_ODE_general_BIG")
 
     # Build command line arguments
     cmd_parts = [
-        executable,
+        str(executable),
         "-MODEL",
         " ".join(map(str, model_numbers)),
         "-PAR",

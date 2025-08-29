@@ -9,6 +9,7 @@ import numpy as np
 from typing import Tuple, Optional, List
 from numpy.typing import NDArray
 from itertools import combinations
+from pathlib import Path
 
 from dda_functions import deriv_all
 
@@ -244,7 +245,6 @@ def run_dda_ct_external(
         Tuple of (command string, loaded CT results)
     """
     import platform
-    import os
     import subprocess
 
     if platform_system is None:
@@ -252,13 +252,14 @@ def run_dda_ct_external(
 
     # Platform-specific executable handling
     if platform_system == "Windows":
-        if not os.path.isfile("run_DDA_AsciiEdf.exe"):
+        executable = Path("run_DDA_AsciiEdf.exe")
+        if not executable.exists():
             import shutil
 
-            shutil.copy("run_DDA_AsciiEdf", "run_DDA_AsciiEdf.exe")
-        CMD = ".\\run_DDA_AsciiEdf.exe"
+            shutil.copy("run_DDA_AsciiEdf", str(executable))
+        CMD = str(executable)
     else:
-        CMD = "./run_DDA_AsciiEdf"
+        CMD = str(Path("run_DDA_AsciiEdf"))
 
     # Build command
     CMD += " -ASCII"

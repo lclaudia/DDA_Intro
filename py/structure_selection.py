@@ -7,7 +7,7 @@ Python equivalent of StructureSelection.jl for analyzing coupled Roessler system
 import os
 import numpy as np
 
-from dda_functions import make_MOD_nr, integrate_ODE_general_BIG, dir_exist, SL
+from dda_functions import make_MOD_nr, integrate_ODE_general_BIG, dir_exist
 from min_error import MinError
 
 
@@ -54,7 +54,7 @@ def main():
     # Data directory and filename
     DATA_DIR = "DATA"
     dir_exist(DATA_DIR)
-    FN_data = f"{DATA_DIR}{SL}data_{example}.ascii"
+    FN_data = os.path.join(DATA_DIR, f"data_{example}.ascii")
 
     # Channel list (all x, y, z coordinates)
     CH_list_all = list(range(1, DIM * NrSyst + 1))

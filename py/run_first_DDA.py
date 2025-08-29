@@ -10,6 +10,7 @@ import os
 import platform
 from itertools import combinations
 import seaborn as sns
+from pathlib import Path
 
 # Import local functions
 from dda_functions import (
@@ -259,13 +260,14 @@ FN_DDA = "ROS_4.DDA"
 
 # Platform-specific executable handling
 if platform.system() == "Windows":
-    if not os.path.isfile("run_DDA_AsciiEdf.exe"):
+    executable = Path("run_DDA_AsciiEdf.exe")
+    if not executable.exists():
         import shutil
 
-        shutil.copy("run_DDA_AsciiEdf", "run_DDA_AsciiEdf.exe")
-    CMD = ".\\run_DDA_AsciiEdf.exe"
+        shutil.copy("run_DDA_AsciiEdf", str(executable))
+    CMD = str(executable)
 else:
-    CMD = "./run_DDA_AsciiEdf"
+    CMD = str(Path("run_DDA_AsciiEdf"))
 
 # Build command
 CMD += " -ASCII"

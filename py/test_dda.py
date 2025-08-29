@@ -46,14 +46,19 @@ def verify_dda_accuracy() -> Tuple[float, float, bool]:
     print("\n" + "=" * 60)
     print("Testing Single Timeseries DDA...")
     Y_single = Y[:, 0]
-    ST_single = compute_st_single(Y_single, TAU, dm, order, WL, WS)
+    ST_single_dict = compute_st_single(Y_single, TAU, dm, order, WL, WS, return_dict=True)
+    ST_single = compute_st_single(Y_single, TAU, dm, order, WL, WS, return_dict=False)
     print(f"ST_single shape: {ST_single.shape}")
+    print(f"Dictionary keys: {list(ST_single_dict.keys())}")
 
     # Test multiple timeseries DDA
     print("\n" + "=" * 60)
     print("Testing Multiple Timeseries DDA...")
-    ST_multiple = compute_st_multiple(Y, TAU, dm, order, WL, WS)
+    ST_multiple_dict = compute_st_multiple(Y, TAU, dm, order, WL, WS, return_dict=True)
+    ST_multiple = compute_st_multiple(Y, TAU, dm, order, WL, WS, return_dict=False)
     print(f"ST_multiple shape: {ST_multiple.shape}")
+    print(f"Dictionary keys: {list(ST_multiple_dict.keys())}")
+    print(f"Metadata: {ST_multiple_dict['metadata']}")
 
     # Test cross-timeseries DDA
     print("\n" + "=" * 60)
@@ -89,17 +94,24 @@ def verify_dda_accuracy() -> Tuple[float, float, bool]:
         ST_reshaped = ST_multiple.reshape(WN, -1, order="F")
         CT_reshaped = CT.reshape(WN, -1, order="F")
 
-        # Compute errors
-        error_ST = np.mean(ST_reshaped - ST_external)
-        error_CT = np.mean(CT_reshaped - CT_external)
+        # Compute errors using absolute maximum difference
+        diff_ST = np.abs(ST_reshaped - ST_external)
+        diff_CT = np.abs(CT_reshaped - CT_external)
+        
+        error_ST_max = np.max(diff_ST)
+        error_ST_mean = np.mean(diff_ST)
+        error_CT_max = np.max(diff_CT)
+        error_CT_mean = np.mean(diff_CT)
 
-        print(f"\nST error: {error_ST:.2e}")
-        print(f"CT error: {error_CT:.2e}")
+        print(f"\nST max error: {error_ST_max:.2e}")
+        print(f"ST mean error: {error_ST_mean:.2e}")
+        print(f"CT max error: {error_CT_max:.2e}")
+        print(f"CT mean error: {error_CT_mean:.2e}")
 
-        # Check if errors are on the order of e-17
-        tolerance = 1e-15
-        st_within_tolerance = abs(error_ST) < tolerance
-        ct_within_tolerance = abs(error_CT) < tolerance
+        # Check if errors are within machine precision
+        tolerance = 1e-17
+        st_within_tolerance = error_ST_max < tolerance
+        ct_within_tolerance = error_CT_max < tolerance
 
         print(f"\nST within tolerance (< {tolerance:.0e}): {st_within_tolerance}")
         print(f"CT within tolerance (< {tolerance:.0e}): {ct_within_tolerance}")
@@ -113,7 +125,7 @@ def verify_dda_accuracy() -> Tuple[float, float, bool]:
         else:
             print("\n✗ FAILURE: Errors exceed expected tolerance")
 
-        return error_ST, error_CT, success
+        return error_ST_max, error_CT_max, success
 
     else:
         print("\nWarning: External DDA result files not found.")
@@ -145,14 +157,21 @@ def test_individual_functions():
 
     # Test ST single
     print("\nTesting compute_st_single...")
-    st_result = compute_st_single(test_data[:, 0], TAU, dm)
-    print(f"  Result shape: {st_result.shape}")
+    st_result_dict = compute_st_single(test_data[:, 0], TAU, dm, return_dict=True)
+    st_result = compute_st_single(test_data[:, 0], TAU, dm, return_dict=False)
+    print(f"  Array shape: {st_result.shape}")
+    print(f"  Dictionary coefficients shape: {st_result_dict['coefficients'].shape}")
     print(f"  Mean error: {np.mean(st_result[:, 3]):.6f}")
+    print(f"  Model equation: {st_result_dict['model_description']['equation']}")
 
     # Test ST multiple
     print("\nTesting compute_st_multiple...")
-    st_multi_result = compute_st_multiple(test_data, TAU, dm)
-    print(f"  Result shape: {st_multi_result.shape}")
+    st_multi_dict = compute_st_multiple(test_data, TAU, dm, return_dict=True, 
+                                        channel_names=['sin1', 'cos1', 'sin2'])
+    st_multi_result = compute_st_multiple(test_data, TAU, dm, return_dict=False)
+    print(f"  Array shape: {st_multi_result.shape}")
+    print(f"  Dictionary coefficients shape: {st_multi_dict['coefficients'].shape}")
+    print(f"  Channel names: {st_multi_dict['metadata'].get('channel_names')}")
     print(f"  Mean errors per channel: {np.mean(st_multi_result[:, 3, :], axis=0)}")
 
     # Test CT
@@ -180,7 +199,7 @@ def main():
     test_individual_functions()
 
     # Verify accuracy against external results
-    error_ST, error_CT, success = verify_dda_accuracy()
+    error_ST_max, error_CT_max, success = verify_dda_accuracy()
 
     # Create ergodicity plot
     if success:
@@ -191,7 +210,7 @@ def main():
         Y = np.loadtxt("ROS_4.ascii")
         TAU = [32, 9]
 
-        ST = compute_st_multiple(Y, TAU)
+        ST = compute_st_multiple(Y, TAU, return_dict=False)
         CT, pairs = compute_ct_multiple(Y, TAU)
         E = compute_dynamical_ergodicity(ST, CT, pairs)
 
