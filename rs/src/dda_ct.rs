@@ -1,6 +1,7 @@
 use anyhow::Result;
 use itertools::Itertools;
 use ndarray::{Array1, Array2, Array3, concatenate, Axis};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::dda_functions::deriv_all;
@@ -194,14 +195,32 @@ pub fn run_dda_ct_external(
     wl_ct: usize,
     ws_ct: usize,
 ) -> Result<(String, Array2<f64>)> {
-    // Platform-specific executable handling
+    // Platform-specific executable handling - check current dir first, then parent
     let executable = if cfg!(windows) {
-        if !std::path::Path::new("run_DDA_AsciiEdf.exe").exists() {
-            std::fs::copy("run_DDA_AsciiEdf", "run_DDA_AsciiEdf.exe")?;
+        let exe_path = Path::new("run_DDA_AsciiEdf.exe");
+        let parent_exe = Path::new("../run_DDA_AsciiEdf");
+        
+        if exe_path.exists() {
+            exe_path
+        } else if parent_exe.exists() {
+            if !exe_path.exists() {
+                std::fs::copy(parent_exe, &exe_path)?;
+            }
+            exe_path
+        } else {
+            return Err(anyhow::anyhow!("run_DDA_AsciiEdf executable not found"));
         }
-        ".\\run_DDA_AsciiEdf.exe"
     } else {
-        "./run_DDA_AsciiEdf"
+        let local_exe = Path::new("run_DDA_AsciiEdf");
+        let parent_exe = Path::new("../run_DDA_AsciiEdf");
+        
+        if local_exe.exists() {
+            local_exe
+        } else if parent_exe.exists() {
+            parent_exe
+        } else {
+            return Err(anyhow::anyhow!("run_DDA_AsciiEdf executable not found"));
+        }
     };
 
     // Build command
@@ -244,7 +263,7 @@ pub fn run_dda_ct_external(
     let cmd_str = format!("{:?}", cmd);
 
     // Load results
-    let ct_file = format!("{}_CT", fn_dda);
+    let ct_file = PathBuf::from(format!("{}_CT", fn_dda));
     let contents = std::fs::read_to_string(&ct_file)?;
     
     let mut results = Vec::new();

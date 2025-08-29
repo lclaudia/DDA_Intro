@@ -77,15 +77,32 @@ pub fn integrate_ode_general(
 ) -> Result<Option<Array2<f64>>> {
     let transient = transient.unwrap_or(0);
 
-    // Determine executable name based on platform
+    // Determine executable name based on platform - check current dir first, then parent
     let executable = if cfg!(windows) {
-        // Copy executable if needed
-        if !Path::new("i_ODE_general_BIG.exe").exists() {
-            std::fs::copy("i_ODE_general_BIG", "i_ODE_general_BIG.exe")?;
+        let exe_path = Path::new("i_ODE_general_BIG.exe");
+        let parent_exe = Path::new("../i_ODE_general_BIG");
+        
+        if exe_path.exists() {
+            exe_path
+        } else if parent_exe.exists() {
+            if !exe_path.exists() {
+                std::fs::copy(parent_exe, &exe_path)?;
+            }
+            exe_path
+        } else {
+            return Err(anyhow::anyhow!("i_ODE_general_BIG executable not found"));
         }
-        ".\\i_ODE_general_BIG.exe"
     } else {
-        "./i_ODE_general_BIG"
+        let local_exe = Path::new("i_ODE_general_BIG");
+        let parent_exe = Path::new("../i_ODE_general_BIG");
+        
+        if local_exe.exists() {
+            local_exe
+        } else if parent_exe.exists() {
+            parent_exe
+        } else {
+            return Err(anyhow::anyhow!("i_ODE_general_BIG executable not found"));
+        }
     };
 
     // Build command

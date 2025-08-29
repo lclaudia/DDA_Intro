@@ -1,9 +1,11 @@
 use ndarray::{s, Array1, Array2};
 use std::fs::File;
 use std::io::{Write, BufRead, BufReader};
+use std::path::PathBuf;
 
 fn read_array_from_file(filename: &str) -> Result<Array1<f64>, Box<dyn std::error::Error>> {
-    let file = File::open(filename)?;
+    let path = PathBuf::from(filename);
+    let file = File::open(&path)?;
     let reader = BufReader::new(file);
     let mut values = Vec::new();
     
@@ -59,7 +61,8 @@ fn test_derivative_exact() -> Result<(), Box<dyn std::error::Error>> {
     println!("Final ddata: {:?}", ddata);
     
     // Save result
-    let mut file = File::create("rust_deriv_exact.txt")?;
+    let path = PathBuf::from("rust_deriv_exact.txt");
+    let mut file = File::create(&path)?;
     for val in ddata.iter() {
         writeln!(file, "{:.16e}", val)?;
     }
@@ -175,14 +178,16 @@ fn test_st_exact() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     // Save matrices for comparison
-    let mut file = File::create("rust_MtM.txt")?;
+    let path = PathBuf::from("rust_MtM.txt");
+    let mut file = File::create(&path)?;
     for i in 0..3 {
         for j in 0..3 {
             writeln!(file, "{:.16e}", mtm[[i,j]])?;
         }
     }
     
-    let mut file = File::create("rust_Mtd.txt")?;
+    let path = PathBuf::from("rust_Mtd.txt");
+    let mut file = File::create(&path)?;
     for i in 0..3 {
         writeln!(file, "{:.16e}", mtd[i])?;
     }

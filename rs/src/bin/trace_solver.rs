@@ -2,10 +2,12 @@ use dda::dda_functions::deriv_all;
 use ndarray::{Array1, Array2, s};
 // use ndarray_linalg::Solve;
 use std::fs;
+use std::path::PathBuf;
 
 fn main() {
     // Load test data
-    let data_str = fs::read_to_string("trace_st_input.txt").expect("Failed to read trace_st_input.txt");
+    let data_path = PathBuf::from("trace_st_input.txt");
+    let data_str = fs::read_to_string(&data_path).expect("Failed to read trace_st_input.txt");
     let data: Vec<f64> = data_str.lines()
         .map(|line| line.trim().parse().unwrap())
         .collect();
@@ -166,6 +168,7 @@ fn solve_manual(ata: &Array2<f64>, atb: &Array1<f64>) -> Array1<f64> {
 }
 
 fn write_matrix_to_file(matrix: &Array2<f64>, filename: &str) {
+    let path = PathBuf::from(filename);
     let mut content = String::new();
     for i in 0..matrix.nrows() {
         for j in 0..matrix.ncols() {
@@ -176,13 +179,14 @@ fn write_matrix_to_file(matrix: &Array2<f64>, filename: &str) {
         }
         content.push('\n');
     }
-    fs::write(filename, content).expect("Failed to write matrix file");
+    fs::write(&path, content).expect("Failed to write matrix file");
 }
 
 fn write_vector_to_file(vector: &Array1<f64>, filename: &str) {
+    let path = PathBuf::from(filename);
     let mut content = String::new();
     for i in 0..vector.len() {
         content.push_str(&format!("{:.16e}\n", vector[i]));
     }
-    fs::write(filename, content).expect("Failed to write vector file");
+    fs::write(&path, content).expect("Failed to write vector file");
 }

@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use ndarray::{s, Array2};
 use std::fs;
+use std::path::PathBuf;
 
 use dda::{
     compute_st_single, compute_st_multiple,
@@ -534,6 +535,25 @@ fn main() -> Result<()> {
 }
 
 fn load_data(path: &str) -> Result<Array2<f64>> {
+    let path = PathBuf::from(path);
+    
+    // Check file extension
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some("edf") | Some("EDF") => {
+            Err(anyhow::anyhow!(
+                "EDF files require conversion to ASCII format first.\n\
+                Use: python3 edf_to_ascii.py {} -o {}\n\n\
+                The Python converter supports pyedflib and mne backends for reading EDF files.",
+                path.display(),
+                path.with_extension("txt").display()
+            ))
+        }
+        _ => load_ascii_data(&path),
+    }
+}
+
+
+fn load_ascii_data(path: &PathBuf) -> Result<Array2<f64>> {
     let contents = fs::read_to_string(path)?;
     let mut result = Vec::new();
     
@@ -560,6 +580,7 @@ fn load_data(path: &str) -> Result<Array2<f64>> {
 }
 
 fn save_array_2d(array: &Array2<f64>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for row in array.outer_iter() {
@@ -568,11 +589,12 @@ fn save_array_2d(array: &Array2<f64>, path: &str) -> Result<()> {
         content.push('\n');
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
 
 fn save_st_legacy(st: &Array2<f64>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for (window, row) in st.outer_iter().enumerate() {
@@ -584,11 +606,12 @@ fn save_st_legacy(st: &Array2<f64>, path: &str) -> Result<()> {
         content.push('\n');
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
 
 fn save_st_multiple_legacy(st: &ndarray::Array3<f64>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for window in 0..st.dim().0 {
@@ -602,11 +625,12 @@ fn save_st_multiple_legacy(st: &ndarray::Array3<f64>, path: &str) -> Result<()> 
         }
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
 
 fn save_ct_legacy(ct: &ndarray::Array3<f64>, pairs: &Array2<usize>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for window in 0..ct.dim().0 {
@@ -624,6 +648,6 @@ fn save_ct_legacy(ct: &ndarray::Array3<f64>, pairs: &Array2<usize>, path: &str) 
         }
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
