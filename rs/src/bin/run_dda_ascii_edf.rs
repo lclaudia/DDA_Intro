@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use ndarray::Array2;
 use std::fs;
+use std::path::PathBuf;
 
 use dda::{compute_st_multiple, compute_ct_multiple};
 
@@ -124,7 +125,8 @@ fn main() -> Result<()> {
 }
 
 fn load_data(path: &str) -> Result<Array2<f64>> {
-    let contents = fs::read_to_string(path)?;
+    let path = PathBuf::from(path);
+    let contents = fs::read_to_string(&path)?;
     let mut result = Vec::new();
     
     for line in contents.lines() {
@@ -150,6 +152,7 @@ fn load_data(path: &str) -> Result<Array2<f64>> {
 }
 
 fn save_st_legacy(st: &Array2<f64>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for (window, row) in st.outer_iter().enumerate() {
@@ -161,11 +164,12 @@ fn save_st_legacy(st: &Array2<f64>, path: &str) -> Result<()> {
         content.push('\n');
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
 
 fn save_st_multiple_legacy(st: &ndarray::Array3<f64>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for window in 0..st.dim().0 {
@@ -179,11 +183,12 @@ fn save_st_multiple_legacy(st: &ndarray::Array3<f64>, path: &str) -> Result<()> 
         }
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
 
 fn save_ct_legacy(ct: &ndarray::Array3<f64>, pairs: &Array2<usize>, path: &str) -> Result<()> {
+    let path = PathBuf::from(path);
     let mut content = String::new();
     
     for window in 0..ct.dim().0 {
@@ -201,6 +206,6 @@ fn save_ct_legacy(ct: &ndarray::Array3<f64>, pairs: &Array2<usize>, path: &str) 
         }
     }
     
-    fs::write(path, content)?;
+    fs::write(&path, content)?;
     Ok(())
 }
